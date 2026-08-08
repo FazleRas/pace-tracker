@@ -1,3 +1,17 @@
+"use client";
+
+import { useState, useEffect } from "react";
+
+// Turns a time string like "14:32:00" into a real JS Date for today.
+function timeStringToDate(timeString) {
+  const [hours, minutes, seconds] = timeString.split(":").map(Number);
+  const date = new Date();
+  date.setHours(hours, minutes, seconds, 0);
+  return date;
+}
+
+// ADD WHOLE MIN CALC AND HOW FREQUENT STOPS UPDATE (next commit)
+
 export default function DeparturePill({ state, departure, following }) {
   const [minutesLeft, setMinutesLeft] = useState(() =>
     departure ? getMinutesUntil(departure.time) : 0
