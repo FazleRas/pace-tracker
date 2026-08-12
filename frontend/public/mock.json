@@ -1,9 +1,52 @@
 {
-  "stop": "Oakton Community College",
-  "stopId": "220s0345",
-  "departures": [
-    { "time": "22:10:00", "route": "208", "headsign": "Golf Mill", "serviceId": "2026-06-NW-Weekday-01" },
-    { "time": "22:40:00", "route": "208", "headsign": "Golf Mill", "serviceId": "2026-06-NW-Weekday-01" },
-    { "time": "24:16:00", "route": "208", "headsign": "Golf Mill", "serviceId": "2026-06-NW-Weekday-01" }
+  "generatedAt": "2026-08-11T06:00:00-05:00",
+  "route": "208",
+  "calendar": {
+    "2026-06-NW-Weekday-01": {
+      "days": [1, 1, 1, 1, 1, 0, 0],
+      "startDate": "20260601",
+      "endDate": "20261231"
+    },
+    "2026-06-NW-Saturday-01": {
+      "days": [0, 0, 0, 0, 0, 1, 0],
+      "startDate": "20260601",
+      "endDate": "20261231"
+    }
+  },
+  "exceptions": {
+    "20261126": {
+      "added": ["2026-11-NW-Holiday-01"],
+      "removed": ["2026-06-NW-Weekday-01"]
+    }
+  },
+  "stops": [
+    {
+      "stopId": "220s0345",
+      "stop": "Oakton Community College",
+      "departures": [
+        { "time": "05:02:00", "route": "208", "headsign": "Golf Mill", "serviceId": "2026-06-NW-Weekday-01" },
+        { "time": "09:30:00", "route": "208", "headsign": "Golf Mill", "serviceId": "2026-06-NW-Saturday-01" },
+        { "time": "11:00:00", "route": "208", "headsign": "Golf Mill", "serviceId": "2026-11-NW-Holiday-01" },
+        { "time": "22:10:00", "route": "208", "headsign": "Golf Mill", "serviceId": "2026-06-NW-Weekday-01" },
+        { "time": "22:40:00", "route": "208", "headsign": "Golf Mill", "serviceId": "2026-06-NW-Weekday-01" },
+        { "time": "24:16:00", "route": "208", "headsign": "Golf Mill", "serviceId": "2026-06-NW-Weekday-01" }
+      ]
+    },
+    {
+      "stopId": "220s0350",
+      "stop": "Golf Rd & Greenwood Ave",
+      "departures": [
+        { "time": "05:11:00", "route": "208", "headsign": "Golf Mill", "serviceId": "2026-06-NW-Weekday-01" },
+        { "time": "22:19:00", "route": "208", "headsign": "Golf Mill", "serviceId": "2026-06-NW-Weekday-01" }
+      ]
+    },
+    {
+      "stopId": "220n0248",
+      "stop": "Golf Rd & Greenwood Ave",
+      "departures": [
+        { "time": "06:47:00", "route": "208", "headsign": "Davis St", "serviceId": "2026-06-NW-Weekday-01" },
+        { "time": "24:31:00", "route": "208", "headsign": "Davis St", "serviceId": "2026-06-NW-Weekday-01" }
+      ]
+    }
   ]
 }
