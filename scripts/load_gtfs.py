@@ -26,6 +26,7 @@ for name in FILES:
 
 con.execute("CREATE INDEX IF NOT EXISTS ix_st_stop ON stop_times(stop_id)")
 con.execute("CREATE INDEX IF NOT EXISTS ix_tr_trip ON trips(trip_id)")
+con.execute("CREATE INDEX IF NOT EXISTS ix_st_trip ON stop_times(trip_id)")
 con.commit()
 con.close()
 print("done -> " + str(DB))

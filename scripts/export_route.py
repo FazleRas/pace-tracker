@@ -39,16 +39,42 @@ def stop_names(con):
     return dict(rows)
 
 
-def departures_for(con, stop_id):
+def trip_termini(con):
+    """Where each trip actually ends, as trip_id -> stop name.
+
+    Pace's feed has no trip_headsign column at all — the only direction field
+    is direction_text, which is literally "East" or "West". A pill reading
+    "208 to West" tells a rider nothing. The last stop of the trip is the
+    name they recognize: "Davis CTA Station", "Northwest Transportation
+    Center". Built once for this route, then looked up per departure.
+    """
+    # stop_times is ~733k rows; without this the per-trip MAX() scan crawls.
+    con.execute("CREATE INDEX IF NOT EXISTS ix_st_trip ON stop_times(trip_id)")
+    q = (
+        "SELECT t.trip_id, s.stop_name "
+        "FROM trips t "
+        "JOIN routes r     ON r.route_id = t.route_id "
+        "JOIN stop_times st ON st.trip_id = t.trip_id "
+        "JOIN stops s      ON s.stop_id  = st.stop_id "
+        "WHERE r.route_short_name = ? "
+        "  AND CAST(st.stop_sequence AS INTEGER) = ("
+        "      SELECT MAX(CAST(st2.stop_sequence AS INTEGER)) "
+        "      FROM stop_times st2 WHERE st2.trip_id = t.trip_id)"
+    )
+    return dict(con.execute(q, (ROUTE,)))
+
+
+def departures_for(con, stop_id, termini):
     """One row per scheduled departure, tagged with the service it belongs to.
 
     Field names are renamed HERE, on purpose: the DB calls them
-    route_short_name / direction_text, the frontend reads route / headsign.
-    Renaming at the boundary means DeparturePill never has to know GTFS exists.
+    route_short_name / stop_name-of-last-stop, the frontend reads route /
+    headsign. Renaming at the boundary means DeparturePill never has to know
+    GTFS exists.
     """
     q = (
         "SELECT st.departure_time, r.route_short_name, r.route_long_name, "
-        "       t.direction_text, t.service_id "
+        "       t.direction_text, t.service_id, t.trip_id "
         "FROM stop_times st "
         "JOIN trips t  ON t.trip_id  = st.trip_id "
         "JOIN routes r ON r.route_id = t.route_id "
@@ -56,18 +82,21 @@ def departures_for(con, stop_id):
     )
     seen = set()
     out = []
-    for dep, short, long, dirtxt, svc in con.execute(q, (stop_id, ROUTE)):
+    for dep, short, long, dirtxt, svc, trip_id in con.execute(q, (stop_id, ROUTE)):
         if not dep or not svc:
             continue
-        key = (dep, short, dirtxt, svc)
-        if key in seen:  # same time+direction can appear on several trips
+        # Fall back to the compass direction only if a trip has no terminus,
+        # which would mean a malformed feed rather than a missing headsign.
+        headsign = termini.get(trip_id) or dirtxt or ""
+        key = (dep, short, headsign, svc)
+        if key in seen:  # same time+destination can appear on several trips
             continue
         seen.add(key)
         out.append(
             {
                 "time": dep,
                 "route": short or long,
-                "headsign": dirtxt or "",
+                "headsign": headsign,
                 "serviceId": svc,
             }
         )
@@ -117,10 +146,11 @@ def main():
 
     con = sqlite3.connect(DB)
     names = stop_names(con)
+    termini = trip_termini(con)
 
     stops, service_ids = [], set()
     for stop_id in STOPS:
-        deps = departures_for(con, stop_id)
+        deps = departures_for(con, stop_id, termini)
         service_ids.update(d["serviceId"] for d in deps)
         stops.append(
             {
