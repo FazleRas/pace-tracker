@@ -22,6 +22,6 @@ All served by **Route 208 (Golf Road)**, east + west. Service runs 06:35–21:44
 
 See `docs/ARCHITECTURE.md` for the data model and known constraints.
 
-## License 
+## License
 
 This project is under the MIT License.
