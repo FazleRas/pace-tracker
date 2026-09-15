@@ -43,7 +43,8 @@ export const DAYS = [
  * @returns {number} seconds since midnight of the service day
  */
 export function toSeconds(hms) {
-  throw new Error("not implemented");
+  const [hours, minutes, seconds] = hms.split(":").map(Number);
+  return hours * 3600 + minutes * 60 + seconds;
 }
 
 /**
@@ -58,7 +59,35 @@ export function toSeconds(hms) {
  * @returns {Set<string>} active service IDs
  */
 export function activeServiceIds(feed, ymd) {
-  throw new Error("not implemented");
+  const weekday = mondayIndexedWeekday(ymd);
+  const ids = new Set();
+
+  for (const [serviceId, service] of Object.entries(feed.calendar)) {
+    if (
+      service.startDate <= ymd &&
+      ymd <= service.endDate &&
+      service.days[weekday] === 1
+    ) {
+      ids.add(serviceId);
+    }
+  }
+
+  const exception = feed.exceptions?.[ymd];
+  if (exception) {
+    for (const id of exception.removed ?? []) ids.delete(id);
+    for (const id of exception.added ?? []) ids.add(id);
+  }
+
+  return ids;
+}
+
+/** "YYYYMMDD" -> weekday index where 0 = Monday ... 6 = Sunday. */
+function mondayIndexedWeekday(ymd) {
+  const year = Number(ymd.slice(0, 4));
+  const month = Number(ymd.slice(4, 6));
+  const day = Number(ymd.slice(6, 8));
+  const sundayIndexed = new Date(year, month - 1, day).getDay();
+  return (sundayIndexed + 6) % 7;
 }
 
 /**
@@ -81,5 +110,79 @@ export function activeServiceIds(feed, ymd) {
  * @returns {{state: string, departure: object|null, following: object|null}}
  */
 export function nextDeparture(feed, stopId, now) {
-  throw new Error("not implemented");
+  const stop = feed.stops.find((s) => s.stopId === stopId);
+  if (!stop) {
+    return { state: "CLOSED", departure: null, following: null };
+  }
+
+  const { ymd: serviceDay, nowSeconds } = serviceDayFor(now);
+  const upcoming = upcomingDepartures(feed, stop, serviceDay, nowSeconds);
+
+  if (upcoming.length >= 2) {
+    return {
+      state: "OK",
+      departure: toDeparture(upcoming[0]),
+      following: toDeparture(upcoming[1]),
+    };
+  }
+  if (upcoming.length === 1) {
+    return { state: "LAST_BUS", departure: toDeparture(upcoming[0]), following: null };
+  }
+
+  // Nothing left in this service day: walk forward, day by day, until we
+  // find one that runs any service at all.
+  let searchDay = addDays(serviceDay, 1);
+  for (let daysAhead = 0; daysAhead < 14; daysAhead++) {
+    const firstBuses = upcomingDepartures(feed, stop, searchDay, 0);
+    if (firstBuses.length > 0) {
+      return { state: "CLOSED", departure: toDeparture(firstBuses[0]), following: null };
+    }
+    searchDay = addDays(searchDay, 1);
+  }
+
+  return { state: "CLOSED", departure: null, following: null };
+}
+
+/**
+ * Which service day `now` belongs to, and how many seconds into that
+ * service day `now` is. Before ~03:00, `now` still belongs to the previous
+ * calendar date's service day (so a 24:16:00 departure is still findable),
+ * and its seconds-since-midnight carries the +24h offset to match.
+ */
+function serviceDayFor(now) {
+  const calendarYmd = ymdFromDate(now);
+  const secondsToday = secondsOfDay(now);
+  if (now.getHours() < 3) {
+    return { ymd: addDays(calendarYmd, -1), nowSeconds: 86400 + secondsToday };
+  }
+  return { ymd: calendarYmd, nowSeconds: secondsToday };
+}
+
+function upcomingDepartures(feed, stop, serviceDay, nowSeconds) {
+  const activeIds = activeServiceIds(feed, serviceDay);
+  return stop.departures
+    .filter((d) => activeIds.has(d.serviceId) && toSeconds(d.time) >= nowSeconds)
+    .sort((a, b) => toSeconds(a.time) - toSeconds(b.time));
+}
+
+function toDeparture(d) {
+  return { time: d.time, route: d.route, headsign: d.headsign, serviceId: d.serviceId };
+}
+
+function ymdFromDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}${month}${day}`;
+}
+
+function addDays(ymd, delta) {
+  const year = Number(ymd.slice(0, 4));
+  const month = Number(ymd.slice(4, 6));
+  const day = Number(ymd.slice(6, 8));
+  return ymdFromDate(new Date(year, month - 1, day + delta));
+}
+
+function secondsOfDay(date) {
+  return date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds();
 }
